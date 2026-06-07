@@ -11,7 +11,7 @@ For a question $q$, gold answer $a = (a_1, \dots, a_T)$, and context $C$, define
 the teacher score as the summed answer-token log probability:
 
 $$
-\operatorname{score}(C, q, a)
+\mathrm{score}(C, q, a)
 = \sum_{t=1}^{T} \log p_\theta(a_t \mid C, q, a_{<t})
 $$
 
@@ -20,8 +20,8 @@ chunk $C^+$, define the delta score as:
 
 $$
 \Delta(C^-, C^+, q, a)
-= \operatorname{score}(C^+, q, a)
-- \operatorname{score}(C^-, q, a)
+= \mathrm{score}(C^+, q, a)
+- \mathrm{score}(C^-, q, a)
 $$
 
 A candidate chunk is useful when $\Delta > 0$, because adding it improves the
@@ -159,7 +159,7 @@ that chunking rule with the original one.
 Strict reproduction requires a teacher scorer that can compute:
 
 $$
-\operatorname{score}(C, q, a)
+\mathrm{score}(C, q, a)
 = \sum_{t=1}^{T} \log p_\theta(a_t \mid C, q, a_{<t})
 $$
 
@@ -251,8 +251,8 @@ In replay, the supervised target is:
 $$
 y_\Delta
 = s_{\text{step}} - s_{\text{current}}
-= \operatorname{score}(C^+, q, a)
-- \operatorname{score}(C^-, q, a)
+= \mathrm{score}(C^+, q, a)
+- \mathrm{score}(C^-, q, a)
 $$
 
 where $s_{\text{current}}$ is the teacher score of the current selected context
@@ -297,7 +297,7 @@ The default loss is Huber regression on the teacher delta target:
 
 $$
 \mathcal{L}
-= \operatorname{HuberLoss}(\hat{\Delta}, y_\Delta)
+= \mathrm{HuberLoss}(\hat{\Delta}, y_\Delta)
 $$
 
 For low-resource smoke tests, use `--freeze-backbone` to train only the scalar head.

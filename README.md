@@ -15,7 +15,7 @@
 设问题为 $q$，标准答案为 $a = (a_1, \dots, a_T)$，上下文为 $C$。Teacher 模型对该上下文的答案支持度定义为 gold answer token logprob 之和：
 
 $$
-\operatorname{score}(C, q, a)
+\mathrm{score}(C, q, a)
 = \sum_{t=1}^{T} \log p_\theta(a_t \mid C, q, a_{<t})
 $$
 
@@ -23,8 +23,8 @@ $$
 
 $$
 \Delta(C^-, C^+, q, a)
-= \operatorname{score}(C^+, q, a)
-- \operatorname{score}(C^-, q, a)
+= \mathrm{score}(C^+, q, a)
+- \mathrm{score}(C^-, q, a)
 $$
 
 当 $\Delta > 0$ 时，说明该 candidate chunk 提升了 Teacher 对 gold answer 的条件概率，因此在 greedy 构造中应被接受；否则应被拒绝。
@@ -156,7 +156,7 @@ python scripts/00_fetch_longbench_raw.py `
 严格复现需要 Teacher scorer 能计算：
 
 $$
-\operatorname{score}(C, q, a)
+\mathrm{score}(C, q, a)
 = \sum_{t=1}^{T} \log p_\theta(a_t \mid C, q, a_{<t})
 $$
 
@@ -243,8 +243,8 @@ Replay 阶段的监督目标为：
 $$
 y_\Delta
 = s_{\text{step}} - s_{\text{current}}
-= \operatorname{score}(C^+, q, a)
-- \operatorname{score}(C^-, q, a)
+= \mathrm{score}(C^+, q, a)
+- \mathrm{score}(C^-, q, a)
 $$
 
 其中 $s_{\text{current}}$ 是测试 candidate 前当前 selected context 的 Teacher score，$s_{\text{step}}$ 是加入 candidate 后的 Teacher score。
@@ -284,7 +284,7 @@ $$
 
 $$
 \mathcal{L}
-= \operatorname{HuberLoss}(\hat{\Delta}, y_\Delta)
+= \mathrm{HuberLoss}(\hat{\Delta}, y_\Delta)
 $$
 
 低资源 smoke test 可以加 `--freeze-backbone`，只训练 scalar head。真实实验中应根据 GPU 显存调整 batch size、max length、学习率、训练轮数和验证集比例。
@@ -399,4 +399,3 @@ outputs/
 ## License
 
 MIT. See [LICENSE](LICENSE).
-
