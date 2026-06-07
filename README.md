@@ -1,22 +1,25 @@
 # Logprob Greedy Selector
 
-This repository is a clean reproduction scaffold for **logprob-delta greedy chunk
-selection**. The goal is to train a small selector model to choose useful context
-chunks for long-context QA by imitating a stronger teacher model's answer
-log-probability gains.
+中文 | [English](README.en.md)
 
-The core idea is simple:
+本项目是一个面向开源复现的 **Logprob-Delta Greedy 上下文选块器** 工程骨架。它的目标是：用强模型的答案 logprob 增益构造监督信号，训练一个较小的 selector 模型，使其能够在长上下文问答任务中选择更有用的 context chunks。
 
-For a question $q$, gold answer $a = (a_1, \dots, a_T)$, and context $C$, define
-the teacher score as the summed answer-token log probability:
+核心思想不是判断某个 chunk 与问题是否“语义相关”，而是判断：
+
+```text
+把这个 candidate chunk 加入当前 selected context 后，gold answer 的条件 logprob 是否提升？
+```
+
+## 方法定义
+
+设问题为 $q$，标准答案为 $a = (a_1, \dots, a_T)$，上下文为 $C$。Teacher 模型对该上下文的答案支持度定义为 gold answer token logprob 之和：
 
 $$
 \operatorname{score}(C, q, a)
 = \sum_{t=1}^{T} \log p_\theta(a_t \mid C, q, a_{<t})
 $$
 
-For a current selected context $C^-$ and the context after adding one candidate
-chunk $C^+$, define the delta score as:
+对于加入候选 chunk 前的上下文 $C^-$，以及加入候选 chunk 后的上下文 $C^+$，定义增量分数：
 
 $$
 \Delta(C^-, C^+, q, a)
@@ -24,86 +27,82 @@ $$
 - \operatorname{score}(C^-, q, a)
 $$
 
-A candidate chunk is useful when $\Delta > 0$, because adding it improves the
-teacher model's conditional probability of the gold answer.
+当 $\Delta > 0$ 时，说明该 candidate chunk 提升了 Teacher 对 gold answer 的条件概率，因此在 greedy 构造中应被接受；否则应被拒绝。
 
-This project currently provides:
+## 当前状态
 
-- LongBench data fetching and normalization.
-- Teacher greedy-path construction from gold-answer logprob scores.
-- Replay of teacher greedy paths into `(minus_context, plus_context, target_delta)` samples.
-- A trainable scalar score-head model for delta prediction.
-- Inference-time greedy selection with `candidate_top_p`, `solo_rank_cap`, and `delta_offset`.
-
-It intentionally keeps reader evaluation and reranker baselines separate for now,
-because those depend on local model availability, API providers, and judging policy.
-
-## Status
-
-This is an engineering scaffold, not a finished benchmark release.
-
-Implemented:
+本仓库已经实现从数据获取到小模型选块的主流程：
 
 ```text
-raw LongBench samples
-  -> teacher greedy paths
-  -> delta training dataset
-  -> train scalar score model
-  -> run greedy selector
+LongBench raw samples
+  -> Teacher greedy paths
+  -> Delta training dataset
+  -> Train scalar score model
+  -> Run greedy selector
 ```
 
-Not yet implemented:
+已实现：
 
-```text
-4B reranker baseline
-reader answer generation
-LLM-as-judge accuracy scoring
-full paper-quality experiment report generation
-```
+- LongBench 数据抓取与标准化；
+- Teacher gold-answer logprob 打分接口；
+- Teacher greedy path 构造；
+- greedy path replay 成 `(minus_context, plus_context, target_delta)` 训练样本；
+- Transformer backbone + scalar score head 的 delta 训练；
+- 推理阶段的 greedy selector；
+- `candidate_top_p`、`solo_rank_cap`、`delta_offset` 三个核心推理参数。
 
-## Repository Layout
+暂未实现：
+
+- 4B reranker baseline；
+- Reader 模型问答；
+- LLM-as-judge 准确率评估；
+- 完整论文级实验报告自动生成。
+
+这些模块与具体模型、API 和判分策略强相关，因此当前先保留为后续可插拔扩展。
+
+## 项目结构
 
 ```text
 configs/
-  experiment.yaml                 Default experiment config sketch.
+  experiment.yaml                 实验配置草案
 
 selector/
   data/
-    schema.py                     JSONL schemas.
-    io.py                         JSONL read/write helpers.
-    context.py                    Prompt and chunk joining helpers.
-    greedy_teacher.py             Teacher greedy-path builder.
-    build_delta_dataset.py        Replay greedy path into delta samples.
+    schema.py                     JSONL 数据结构
+    io.py                         JSONL 读写工具
+    context.py                    prompt 构造与 chunk 拼接
+    greedy_teacher.py             Teacher greedy path 构造
+    build_delta_dataset.py        replay path 生成 delta 数据集
 
   scoring/
-    base.py                       Scorer interfaces.
-    hf_logprob_scorer.py          Local Hugging Face gold-answer logprob scorer.
-    openai_logprob_scorer.py      OpenAI-compatible completions logprob scorer.
-    delta_model_predictor.py      Predictor backed by a trained score-head model.
+    base.py                       scorer 抽象接口
+    hf_logprob_scorer.py          本地 Hugging Face gold-answer logprob scorer
+    openai_logprob_scorer.py      OpenAI-compatible completions logprob scorer
+    delta_model_predictor.py      训练后 selector 模型推理接口
 
   model/
-    delta_model.py                Transformer backbone + scalar score head.
-    dataset.py                    Delta JSONL dataset and collator.
+    delta_model.py                Transformer backbone + scalar score head
+    dataset.py                    Delta JSONL dataset 与 collator
 
   select/
-    greedy_selector.py            Inference-time greedy chunk selector.
+    greedy_selector.py            推理阶段 greedy selector
 
 scripts/
-  00_fetch_longbench_raw.py       Fetch LongBench subsets and build raw JSONL.
-  01_build_teacher_paths.py       Build teacher greedy paths.
-  02_build_delta_dataset.py       Build delta training JSONL.
-  03_train_delta_model.py         Train selector score model.
-  04_run_greedy_selector.py       Run trained model as selector.
+  00_fetch_longbench_raw.py       获取 LongBench 子集并生成 raw JSONL
+  01_build_teacher_paths.py       构造 Teacher greedy paths
+  02_build_delta_dataset.py       构造 delta training JSONL
+  03_train_delta_model.py         训练 selector score model
+  04_run_greedy_selector.py       使用训练后模型执行 greedy 选块
 
 docs/
-  *.md                            Research notes and original reproduction planning docs.
+  *.md                            实验说明与复现规划文档
 ```
 
-Generated data, checkpoints, and outputs are ignored by Git via `.gitignore`.
+生成的数据、模型权重和输出目录已经通过 `.gitignore` 排除，不会默认提交到 GitHub。
 
-## Installation
+## 安装
 
-Python 3.10+ is recommended.
+推荐 Python 3.10+。
 
 ```powershell
 python -m venv .venv
@@ -111,23 +110,23 @@ python -m venv .venv
 pip install -r requirements.txt
 ```
 
-Alternatively, install the package in editable mode:
+也可以用 editable mode 安装：
 
 ```powershell
 pip install -e .
 ```
 
-## Data
+## 数据准备
 
-The default raw dataset is sampled from LongBench:
+默认从 LongBench 中抽取三个子集：
 
-- `hotpotqa`: 80 examples
-- `2wikimqa`: 80 examples
-- `hotpotqa_e`: 80 examples
+- `hotpotqa`：80 条；
+- `2wikimqa`：80 条；
+- `hotpotqa_e`：80 条。
 
-Total: 240 examples.
+总计 240 条。
 
-Fetch and normalize the data:
+运行：
 
 ```powershell
 python scripts/00_fetch_longbench_raw.py `
@@ -137,7 +136,7 @@ python scripts/00_fetch_longbench_raw.py `
   --dataset-count hotpotqa_e=80
 ```
 
-The normalized format is:
+标准化后的数据格式：
 
 ```json
 {
@@ -150,25 +149,22 @@ The normalized format is:
 }
 ```
 
-Current chunking is a pragmatic paragraph-merge strategy controlled by
-`--max-chunk-words`. If you need exact reproduction of another experiment, replace
-that chunking rule with the original one.
+当前 chunk 切分采用工程化的段落合并策略，由 `--max-chunk-words` 控制。若要严格复现某个已有实验，需要替换为原实验的 chunking 规则。
 
-## Teacher Logprob Scoring
+## Teacher Logprob 打分
 
-Strict reproduction requires a teacher scorer that can compute:
+严格复现需要 Teacher scorer 能计算：
 
 $$
 \operatorname{score}(C, q, a)
 = \sum_{t=1}^{T} \log p_\theta(a_t \mid C, q, a_{<t})
 $$
 
-That means the scorer must return logprobs for a **given gold answer**, not only
-for text generated by the model.
+注意：这里要求 API 或本地模型能对 **给定的 gold answer** 返回 token logprob，而不是只返回模型自己生成文本的 logprob。
 
-### Option A: Local Hugging Face Model
+### 方案 A：本地 Hugging Face 模型
 
-This is the recommended strict path when you have local GPU resources:
+这是目前推荐的严格路径。只要能本地加载 causal LM，就可以直接计算 gold answer 的条件 logprob。
 
 ```powershell
 python scripts/01_build_teacher_paths.py `
@@ -180,20 +176,18 @@ python scripts/01_build_teacher_paths.py `
   --max-candidates 20
 ```
 
-For a real teacher, replace the model with a stronger local causal LM. The scorer
-concatenates `Context / Question / Answer`, then sums logprobs only over answer
-tokens.
+真实实验中应替换为更强的 Teacher 模型。`hf_logprob_scorer.py` 会拼接 `Context / Question / Answer`，并只累加 answer token 的 logprob。
 
-### Option B: OpenAI-Compatible Completions
+### 方案 B：OpenAI-Compatible Completions
 
-Some providers expose a legacy `/completions` endpoint that supports both:
+如果某个服务商支持 legacy `/completions` 接口，并且同时支持：
 
 ```text
 echo=True
 logprobs=N
 ```
 
-If a provider supports that combination, you can use:
+则可以使用：
 
 ```powershell
 python scripts/01_build_teacher_paths.py `
@@ -205,19 +199,17 @@ python scripts/01_build_teacher_paths.py `
   --openai-api-key-env YOUR_API_KEY_ENV
 ```
 
-Important provider note:
+实测注意事项：
 
-- DeepSeek Chat and Qwen/DashScope Chat can return output-token logprobs.
-- In local smoke tests, DeepSeek beta completions rejected `echo + logprobs`.
-- In local smoke tests, Qwen/DashScope OpenAI-compatible completions did not support
-  `qwen-plus` or `qwen-turbo` for this strict path.
+- DeepSeek Chat 和 Qwen/DashScope Chat 可以返回生成 token 的 logprob；
+- DeepSeek beta completions 在本地 smoke test 中拒绝 `echo + logprobs`；
+- Qwen/DashScope OpenAI-compatible completions 在本地 smoke test 中不支持 `qwen-plus` / `qwen-turbo` 走该严格路径。
 
-Therefore, DeepSeek/Qwen Chat logprobs are useful for generated-answer confidence,
-but they are not equivalent to strict gold-answer teacher scoring.
+因此，DeepSeek/Qwen Chat logprobs 可以用于生成答案置信度分析，但不等价于本项目所需的严格 gold-answer Teacher scoring。
 
-## Build Delta Training Data
+## 构造 Delta 训练数据
 
-After teacher greedy paths are available:
+当 Teacher greedy paths 构造完成后，运行：
 
 ```powershell
 python scripts/02_build_delta_dataset.py `
@@ -225,7 +217,7 @@ python scripts/02_build_delta_dataset.py `
   --output data/processed/delta_train.jsonl
 ```
 
-Each non-seed greedy step becomes one training example:
+每个非 seed 节点会生成一条训练样本：
 
 ```json
 {
@@ -240,13 +232,13 @@ Each non-seed greedy step becomes one training example:
 }
 ```
 
-Replay rules:
+Replay 规则：
 
-- `seed` initializes the selected context and does not create a training sample.
-- `accept` creates a sample and updates selected context.
-- `reject` creates a sample but does not update selected context.
+- `seed` 只初始化 selected context，不产生训练样本；
+- `accept` 产生训练样本，并更新 selected context；
+- `reject` 产生训练样本，但不更新 selected context。
 
-In replay, the supervised target is:
+Replay 阶段的监督目标为：
 
 $$
 y_\Delta
@@ -255,13 +247,11 @@ y_\Delta
 - \operatorname{score}(C^-, q, a)
 $$
 
-where $s_{\text{current}}$ is the teacher score of the current selected context
-before testing the candidate, and $s_{\text{step}}$ is the teacher score after
-adding the candidate.
+其中 $s_{\text{current}}$ 是测试 candidate 前当前 selected context 的 Teacher score，$s_{\text{step}}$ 是加入 candidate 后的 Teacher score。
 
-## Train the Selector
+## 训练 Selector
 
-Train a transformer backbone plus scalar score head:
+训练 Transformer backbone + scalar score head：
 
 ```powershell
 python scripts/03_train_delta_model.py `
@@ -275,10 +265,7 @@ python scripts/03_train_delta_model.py `
   --lr 1e-5
 ```
 
-Training objective:
-
-The trainable selector learns a scalar score function $f_\phi(C, q, a)$. For each
-training sample:
+训练时，小模型学习一个标量函数 $f_\phi(C, q, a)$。对于每条训练样本：
 
 $$
 \hat{s}^- = f_\phi(C^-, q, a)
@@ -293,20 +280,18 @@ $$
 = \hat{s}^+ - \hat{s}^-
 $$
 
-The default loss is Huber regression on the teacher delta target:
+默认损失函数为：
 
 $$
 \mathcal{L}
 = \operatorname{HuberLoss}(\hat{\Delta}, y_\Delta)
 $$
 
-For low-resource smoke tests, use `--freeze-backbone` to train only the scalar head.
-For real experiments, tune batch size, sequence length, learning rate, and train/val
-split according to available GPU memory.
+低资源 smoke test 可以加 `--freeze-backbone`，只训练 scalar head。真实实验中应根据 GPU 显存调整 batch size、max length、学习率、训练轮数和验证集比例。
 
-## Run Greedy Selection
+## 推理阶段 Greedy 选块
 
-Use the trained model as an inference-time selector:
+使用训练好的模型执行选块：
 
 ```powershell
 python scripts/04_run_greedy_selector.py `
@@ -319,23 +304,23 @@ python scripts/04_run_greedy_selector.py `
   --delta-offset 0.0
 ```
 
-Selection logic:
+推理逻辑：
 
-1. Compute single-chunk delta against empty context.
-2. Sort chunks by single delta.
-3. Build a candidate pool using softmax top-p and `solo_rank_cap`.
-4. Seed with the best single chunk.
-5. Greedily accept a candidate when predicted delta is at least `delta_offset`.
+1. 对每个单 chunk 计算相对于 empty context 的 delta；
+2. 按 single-chunk delta 排序；
+3. 用 softmax top-p 和 `solo_rank_cap` 构造候选池；
+4. 用最高 single-delta chunk 作为 seed；
+5. 对候选池剩余 chunk 做 greedy 增量判断；
+6. 当预测增量不低于 `delta_offset` 时 accept。
 
-At inference time, the selector first ranks individual chunks by:
+单块排序分数为：
 
 $$
 \hat{\Delta}_i
 = f_\phi(c_i, q, a) - f_\phi(\varnothing, q, a)
 $$
 
-For a candidate chunk $c_j$ and current selected context $C_{\text{sel}}$, the
-greedy decision is:
+对于当前 selected context $C_{\text{sel}}$ 和候选 chunk $c_j$，greedy 增量为：
 
 $$
 \hat{\Delta}_j
@@ -343,15 +328,15 @@ $$
 - f_\phi(C_{\text{sel}}, q, a)
 $$
 
-The candidate is accepted when:
+接受规则为：
 
 $$
 \hat{\Delta}_j \ge \tau
 $$
 
-where $\tau$ is the `delta_offset` threshold.
+其中 $\tau$ 即 `delta_offset`。
 
-## Full Pipeline Summary
+## 完整流程
 
 ```powershell
 python scripts/00_fetch_longbench_raw.py --output data/raw/samples.jsonl
@@ -377,33 +362,31 @@ python scripts/04_run_greedy_selector.py `
   --model-dir outputs/delta_model
 ```
 
-## Reproduction Boundaries
+## 复现边界
 
-The original experiment notes target a 0.8B selector that beats a 4B reranker on
-a sampled 224-example evaluation set. This repository does not claim those numbers
-out of the box.
+原始实验说明中，目标是在一个 bucket-sampled 的 224 条评估集上，让 0.8B selector 超过 4B reranker top-k。本仓库当前不直接声称复现该数值。
 
-To reproduce those numbers, you still need to specify or implement:
+要复现该结果，还需要明确：
 
-- A strong teacher model for gold-answer logprob scoring.
-- The exact chunking strategy.
-- The exact 0.8B base model and training hyperparameters.
-- A 4B reranker baseline.
-- A reader model and answer-judging policy.
-- The original bucket-sampled 224-example evaluation protocol.
+- 强 Teacher 模型；
+- 原始 chunking 规则；
+- 具体 0.8B base model 和训练超参；
+- 4B reranker baseline；
+- Reader 模型；
+- answer judge 策略；
+- 224 条 bucket-sampled 评估协议。
 
-The current repository is designed so those components can be plugged in without
-rewriting the data construction and selector training pipeline.
+本仓库的目标是先提供稳定、清晰、可扩展的工程骨架，使这些组件后续可以逐步接入。
 
-## Development Notes
+## 开发与检查
 
-Run syntax checks:
+语法检查：
 
 ```powershell
 python -m compileall selector scripts
 ```
 
-Keep generated files out of commits:
+不要提交生成文件：
 
 ```text
 data/raw/
@@ -411,6 +394,9 @@ data/processed/
 outputs/
 ```
 
+这些目录已在 `.gitignore` 中排除。
+
 ## License
 
 MIT. See [LICENSE](LICENSE).
+
