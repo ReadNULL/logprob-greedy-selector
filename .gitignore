@@ -1,0 +1,38 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# IDE / OS
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Local credentials
+.env
+.env.*
+
+# Generated experiment artifacts
+data/raw/
+data/processed/
+outputs/
+runs/
+checkpoints/
+*.pt
+*.pth
+*.safetensors
+
+# Hugging Face / model caches accidentally created inside the repo
+.cache/
+hf_cache/
+

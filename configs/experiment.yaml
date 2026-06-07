@@ -1,0 +1,19 @@
+seed: 42
+
+data:
+  raw_path: data/raw/samples.jsonl
+  greedy_path_output: data/processed/teacher_greedy_paths.jsonl
+  delta_dataset_output: data/processed/delta_train.jsonl
+  chunk_separator: "\n\n"
+
+teacher:
+  backend: hf
+  model_name_or_path: Qwen/Qwen2.5-0.5B-Instruct
+  device: auto
+  dtype: auto
+  max_length: 8192
+
+greedy:
+  max_candidates: null
+  require_strict_improvement: true
+
