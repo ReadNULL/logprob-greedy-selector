@@ -11,8 +11,7 @@ For a question $q$, gold answer $a = (a_1, \dots, a_T)$, and context $C$, define
 the teacher score as the summed answer-token log probability:
 
 $$
-\mathrm{score}(C, q, a)
-= \sum_{t=1}^{T} \log p_\theta(a_t \mid C, q, a_{<t})
+\mathrm{score}(C, q, a) = \sum_{t=1}^{T} \log p_\theta(a_t \mid C, q, a_{\lt t})
 $$
 
 For a current selected context $C^-$ and the context after adding one candidate
@@ -20,8 +19,7 @@ chunk $C^+$, define the delta score as:
 
 $$
 \Delta(C^-, C^+, q, a)
-= \mathrm{score}(C^+, q, a)
-- \mathrm{score}(C^-, q, a)
+= \mathrm{score}(C^+, q, a) - \mathrm{score}(C^-, q, a)
 $$
 
 A candidate chunk is useful when $\Delta > 0$, because adding it improves the
@@ -159,8 +157,7 @@ that chunking rule with the original one.
 Strict reproduction requires a teacher scorer that can compute:
 
 $$
-\mathrm{score}(C, q, a)
-= \sum_{t=1}^{T} \log p_\theta(a_t \mid C, q, a_{<t})
+\mathrm{score}(C, q, a) = \sum_{t=1}^{T} \log p_\theta(a_t \mid C, q, a_{\lt t})
 $$
 
 That means the scorer must return logprobs for a **given gold answer**, not only
@@ -249,10 +246,7 @@ Replay rules:
 In replay, the supervised target is:
 
 $$
-y_\Delta
-= s_{\text{step}} - s_{\text{current}}
-= \mathrm{score}(C^+, q, a)
-- \mathrm{score}(C^-, q, a)
+y_\Delta = s_{\text{step}} - s_{\text{current}} = \mathrm{score}(C^+, q, a) - \mathrm{score}(C^-, q, a)
 $$
 
 where $s_{\text{current}}$ is the teacher score of the current selected context
@@ -339,8 +333,7 @@ greedy decision is:
 
 $$
 \hat{\Delta}_j
-= f_\phi(C_{\text{sel}} \cup \{c_j\}, q, a)
-- f_\phi(C_{\text{sel}}, q, a)
+= f_\phi(C_{\text{sel}} \cup \{c_j\}, q, a) - f_\phi(C_{\text{sel}}, q, a)
 $$
 
 The candidate is accepted when:
