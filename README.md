@@ -241,7 +241,7 @@ $$
 y_\Delta = s_{\text{step}} - s_{\text{current}} = \mathrm{score}(C^+, q, a) - \mathrm{score}(C^-, q, a)
 $$
 
-其中 $s_{\text{current}}$ 是测试 candidate 前当前 selected context 的 Teacher score，$s_{\text{step}}$ 是加入 candidate 后的 Teacher score。
+其中 $s_{\text{current}}$ 是测试 candidate 前当前 selected context 的 Teacher score， $s_{\text{step}}$ 是加入 candidate 后的 Teacher score。
 
 ## 训练 Selector
 
